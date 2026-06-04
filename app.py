@@ -1,9 +1,10 @@
 import streamlit as st
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageDraw
 import random
 import time
 import hashlib
+import io
 
 # --- 1. Premium Industrial Cyber Global Styling ---
 st.set_page_config(page_title="SecureField Auth Suite", layout="wide")
@@ -56,7 +57,6 @@ st.markdown("""
         border: 1px solid #232D3F;
         text-align: center;
     }
-    /* Login Screen Specific Styles */
     .login-container {
         max-width: 450px;
         margin: 80px auto;
@@ -84,9 +84,9 @@ if "active_challenge" not in st.session_state:
     st.session_state.active_challenge = random.choice(challenges)
 if "vault_logs" not in st.session_state:
     st.session_state.vault_logs = [
-        {"record_id": "REC-4412", "timestamp": "2026-06-04 08:30:12", "employee_id": "EMP-102", "status": "AUTHENTICATED", "vector_match": "89.4%", "tamper_status": "🟢 VALID_INTEGRITY", "model_used": "Quantized INT8 (Our Build)"},
-        {"record_id": "REC-8921", "timestamp": "2026-06-04 09:15:45", "employee_id": "EMP-304", "status": "AUTHENTICATED", "vector_match": "94.1%", "tamper_status": "🟢 VALID_INTEGRITY", "model_used": "Quantized INT8 (Our Build)"},
-        {"record_id": "REC-1150", "timestamp": "2026-06-04 11:02:19", "employee_id": "EMP-088", "status": "AUTHENTICATED", "vector_match": "86.7%", "tamper_status": "🟢 VALID_INTEGRITY", "model_used": "Quantized INT8 (Our Build)"}
+        {"record_id": "REC-4412", "timestamp": "2026-06-04 08:30:12", "employee_id": "EMP-102", "status": "BIOMETRIC_AUTH", "vector_match": "89.4%", "tamper_status": "🟢 VALID_INTEGRITY", "model_used": "Quantized INT8 (Our Build)"},
+        {"record_id": "REC-8921", "timestamp": "2026-06-04 09:15:45", "employee_id": "EMP-304", "status": "BIOMETRIC_AUTH", "vector_match": "94.1%", "tamper_status": "🟢 VALID_INTEGRITY", "model_used": "Quantized INT8 (Our Build)"},
+        {"record_id": "REC-1150", "timestamp": "2026-06-04 11:02:19", "employee_id": "EMP-088", "status": "MFA_OVERRIDE_AUTH", "vector_match": "100.0%", "tamper_status": "🟢 VALID_INTEGRITY", "model_used": "Quantized INT8 (Our Build)"}
     ]
 if "similarity_threshold" not in st.session_state:
     st.session_state.similarity_threshold = 0.82
@@ -129,6 +129,22 @@ def generate_tamper_proof_signature(record_id, timestamp, status, emp_id):
     raw_payload = f"{record_id}-{timestamp}-{status}-{emp_id}-DATALAKE3.0SECRETKEY"
     return hashlib.sha256(raw_payload.encode()).hexdigest()[:32]
 
+def generate_text_report(logs_list):
+    """Generates an aligned cryptographic markdown audit ledger sheet."""
+    report = "========================================================================\n"
+    report += "                  SECUREFIELD BIOMETRIC SYSTEM REPORT                     \n"
+    report += f"                  GENERATED VIA CLUSTER ENGINE: {time.strftime('%Y-%m-%d')} \n"
+    report += "========================================================================\n\n"
+    report += f"Total Logs Appended: {len(logs_list)}\n"
+    report += f"Current Verification Threshold Strictness: {st.session_state.similarity_threshold}\n"
+    report += f"Framework Architecture Weight compilation: {st.session_state.model_format}\n\n"
+    report += "------------------------------------------------------------------------\n"
+    report += f"{'RECORD ID':<12} | {'TIMESTAMP':<20} | {'EMPLOYEE':<10} | {'STATUS':<18} | {'INTEGRITY'}\n"
+    report += "------------------------------------------------------------------------\n"
+    for log in logs_list:
+        report += f"{log.get('record_id','N/A'):<12} | {log.get('timestamp','N/A'):<20} | {log.get('employee_id','N/A'):<10} | {log.get('status','N/A'):<18} | {log.get('tamper_status','N/A')}\n"
+    report += "========================================================================\n"
+    return report
 
 # --- 4. SECURE GATEKEEPER LOGIN PROTOCOL ---
 if not st.session_state.authenticated:
@@ -141,7 +157,6 @@ if not st.session_state.authenticated:
     
     st.markdown("<br/>", unsafe_allow_html=True)
     if st.button("🔓 VERIFY INITIAL CREDENTIAL RUNWAYS", use_container_width=True, type="primary"):
-        # Simulated Corporate Access Keys
         if username == "admin" and password == "datalake2026":
             st.session_state.authenticated = True
             st.toast("Security Authorization Tokens Active...", icon="🔑")
@@ -153,36 +168,43 @@ if not st.session_state.authenticated:
     st.markdown("</div>", unsafe_allow_html=True)
     st.info("💡 Standard Prototype Hackathon Sandbox Logins: Username: `admin` | Password: `datalake2026`")
 
-# --- 5. COMPRESSED SUITE MAIN APPLICATION PANEL ---
+# --- 5. MAIN APPLICATION SUITE PANEL ---
 else:
     # --- NAVIGATION PANEL SIDEBAR SYSTEM ---
     st.sidebar.markdown("<h1 style='color:#00E676; font-family:monospace;'>🛸 SECUREFIELD CONTROL</h1>", unsafe_allow_html=True)
     current_screen = st.sidebar.radio("Navigation View Portal:", ["📸 1. Authentication Gate", "📊 2. Analytics Insight Vault", "🛡️ 3. Security Config Matrix"])
 
     st.sidebar.markdown("---")
-    st.sidebar.markdown("<h3 style='color:#FFB300;'>👤 Global Identity Ingestion</h3>", unsafe_allow_html=True)
+    st.sidebar.markdown("<h3 style='color:#FFB300;'>👤 Reference Identity Upload</h3>", unsafe_allow_html=True)
     uploaded_file = st.sidebar.file_uploader("Ingest Master Identity Dossier", type=["jpg", "png", "jpeg"])
 
     if uploaded_file:
         img_pil = Image.open(uploaded_file).convert("RGB")
-        st.sidebar.image(img_pil, caption="Current System Reference Profile", width=160)
+        st.sidebar.image(img_pil, caption="Uploaded Master Reference Profile", width=160)
         if st.sidebar.button("🔐 Re-compile Identity Vector"):
             st.session_state.master_vector = extract_one_way_vector(img_pil)
-            st.sidebar.success("✅ Master Key Matrix Updated Locally!")
+            st.sidebar.success("✅ Master Key Matrix Updated!")
 
     st.sidebar.markdown("---")
     if st.sidebar.button("🛑 Secure Logout", type="secondary", use_container_width=True):
         st.session_state.authenticated = False
         st.rerun()
 
-
     # --- SCREEN 1: THE AUTHENTICATION GATE TERMINAL ---
     if current_screen == "📸 1. Authentication Gate":
         st.markdown("<h2 class='hud-title'>📸 Biometric Field Ingress Portal</h2>", unsafe_allow_html=True)
-        st.write("Offline gate hardware terminal simulation engine.")
         
+        # CAMERA ENROLLMENT SYSTEM (Triggered if no identity vector profile exists)
         if st.session_state.master_vector is None:
-            st.info("💡 Hardware Engine Idle. Ingest a template photo via the sidebar navigation panel to wake system loops.")
+            st.warning("💡 Hardware Engine Profile Empty. Please capture an initial reference photo below to compile your face matrix keys.")
+            enrollment_buffer = st.camera_input("Register Identity Enrollment Frame Scan")
+            if enrollment_buffer is not None:
+                enroll_img = Image.open(enrollment_buffer).convert("RGB")
+                if st.button("🔒 Finalize Master Verification Profile Ingestion", type="primary"):
+                    st.session_state.master_vector = extract_one_way_vector(enroll_img)
+                    st.success("🎉 ENROLLMENT COMPLETE: On-device verification vector mapped successfully!")
+                    time.sleep(0.5)
+                    st.rerun()
         else:
             mode_selection = st.radio("Select Authentication Workflow Mode:", ["Personal Device Login", "Supervisor Crew Processing Mode"])
             target_emp_id = "EMP-OWNER"
@@ -275,8 +297,7 @@ else:
                     else:
                         st.error("🛑 AUTHENTICATION CRITICAL FAILURE: Facial metrics do not match master credentials.")
 
-
-    # --- SCREEN 2: ANALYTICS INSIGHT VAULT DASHBOARD ---
+    # --- SCREEN 2: ANALYTICS INSIGHT VAULT & REPORT GENERATION ---
     elif current_screen == "📊 2. Analytics Insight Vault":
         st.markdown("<h2 class='hud-title'>📊 Business Intelligence & Attendance Insight Vault</h2>", unsafe_allow_html=True)
         st.write("Real-time local cluster analytics for corporate tracking diagnostics.")
@@ -290,16 +311,29 @@ else:
         with c2:
             st.markdown(f"<div class='metric-card'><span style='color:#FFB300;font-size:14px;font-family:monospace;'>NETWORK ARCHIVE MODE</span><br/><b style='font-size:32px;'>100% OFFLINE</b></div>", unsafe_allow_html=True)
         with c3:
-            st.markdown(f"<div class='metric-card'><span style='color:#FF1744;font-size:14px;font-family:monospace;'>INTEGRITY TEMPER BREACHES</span><br/><b style='font-size:32px;'>{tamper_alerts}</b></div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='metric-card'><span style='color:#FF1744;font-size:14px;font-family:monospace;'>INTEGRITY TAMPER BREACHES</span><br/><b style='font-size:32px;'>{tamper_alerts}</b></div>", unsafe_allow_html=True)
             
         st.markdown("### On-Device Cache Storage Array Logs")
         
-        if st.button("🚨 Simulate Attacker Database Injection (Tamper Test Log #1)"):
-            if len(st.session_state.vault_logs) > 0:
-                st.session_state.vault_logs[0]["employee_id"] = "COMPROMISED-ID-99"
-                st.session_state.vault_logs[0]["tamper_status"] = "🟥 CORRUPTED_SIGNATURE_ALERT"
-                st.toast("Malicious structural rewrite caught!", icon="⚡")
-                st.rerun()
+        col_btn1, col_btn2 = st.columns(2)
+        with col_btn1:
+            if st.button("🚨 Simulate Attacker Database Injection"):
+                if len(st.session_state.vault_logs) > 0:
+                    st.session_state.vault_logs[0]["employee_id"] = "COMPROMISED-ID-99"
+                    st.session_state.vault_logs[0]["tamper_status"] = "🟥 CORRUPTED_SIGNATURE_ALERT"
+                    st.toast("Malicious structural rewrite caught!", icon="⚡")
+                    st.rerun()
+        
+        # REPORT GENERATION SYSTEM ENGINE BLOCK
+        with col_btn2:
+            report_data = generate_text_report(st.session_state.vault_logs)
+            st.download_button(
+                label="📥 GENERATE SYSTEM CRYPTO REPORT LEDGER",
+                data=report_data,
+                file_name=f"SecureField_Audit_Ledger_{time.strftime('%Y%m%d_%H%M%S')}.txt",
+                mime="text/plain",
+                use_container_width=True
+            )
                 
         st.json(st.session_state.vault_logs)
         
@@ -320,7 +354,6 @@ else:
                     st.session_state.vault_logs = []
                     st.success("💥 TRANSACTION AGGREGATED: AWS Backbone update success. Local disk logs wiped clean down to 0 Bytes.")
                     st.rerun()
-
 
     # --- SCREEN 3: SECURITY CONFIGURATION MATRIX ---
     elif current_screen == "🛡️ 3. Security Config Matrix":

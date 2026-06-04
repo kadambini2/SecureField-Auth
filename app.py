@@ -1,6 +1,6 @@
 import streamlit as st
 import numpy as np
-from PIL import Image, ImageOps
+from PIL import Image
 import random
 import time
 import hashlib
@@ -52,7 +52,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.title("🛡️ SecureField Auth Terminal v3.0")
+st.title("🛡️ SecureField Auth Terminal v3.1")
 st.caption("Datalake 3.0 Advanced Edge Simulation Sandbox • Production Standard")
 
 # --- 2. Advanced Mathematical & Cryptographic Logic ---
@@ -63,12 +63,23 @@ def analyze_lighting_matrix(pil_img):
     return float(np.mean(arr)), float(np.std(arr))
 
 def analyze_passive_liveness(pil_img):
-    """Analyzes high-frequency micro-texture variance using Laplacian edge standard deviation."""
+    """
+    🔬 FEATURE 1: PASSIVE LIVENESS (Texture & Moire Screen Detection)
+    Analyzes micro-texture variance using a high-speed NumPy pixel gradient calculation.
+    Screens look overly uniform or artificially blurred compared to genuine human skin textures.
+    """
     gray = pil_img.convert("L")
-    edge_detected = ImageOps.filter(gray, filter=lambda: (-1,-1,-1, -1,8,-1, -1,-1,-1))
-    edge_arr = np.array(edge_detected)
-    texture_variance = float(np.std(edge_arr))
-    is_spoof = texture_variance < 3.5 or texture_variance > 45.0
+    arr = np.array(gray, dtype=np.float32)
+    
+    # Calculate horizontal and vertical pixel differences (gradients)
+    dy, dx = np.gradient(arr)
+    gradient_magnitude = np.sqrt(dx**2 + dy**2)
+    
+    # Texture variance is the standard deviation of the gradient magnitudes
+    texture_variance = float(np.std(gradient_magnitude))
+    
+    # Flag as a spoof if the texture is too flat (screen/photo) or unnaturally high (moire pattern)
+    is_spoof = texture_variance < 5.0 or texture_variance > 55.0
     return texture_variance, is_spoof
 
 def extract_one_way_vector(pil_img):
@@ -242,7 +253,6 @@ else:
         st.markdown("<h3 style='color:#FFB300; font-family:monospace;'>📡 On-Device Encrypted Logs Queue</h3>", unsafe_allow_html=True)
         st.write("This local storage buffer mimics encrypted local storage arrays running on a worker's handset.")
         
-        # Interactive Tamper Demonstration Button for Judges
         if st.button("🚨 Simulate Local Database Tamper Attempt (Attacker Injection)"):
             if st.session_state.vault_logs:
                 st.session_state.vault_logs[0]["employee_id"] = "FORGED-ID-9999"
@@ -254,7 +264,6 @@ else:
         network_toggle = st.radio("Simulate Field Network Hardware State Integration:", ["🔴 Out of Service Reach Zone (Air-Gapped)", "🟢 Cloud Connection Restored (AWS Backbone Inbound)"])
         
         if network_toggle == "🟢 Cloud Connection Restored (AWS Backbone Inbound)":
-            # Check if any records are flagged as corrupted before allowing a sync
             has_corruption = any(d['tamper_status'] == "🟥 CORRUPTED_SIGNATURE_ALERT" for d in st.session_state.vault_logs)
             
             if has_corruption:

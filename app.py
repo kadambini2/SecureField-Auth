@@ -1,7 +1,8 @@
 import streamlit as st
-import cv2
 import mediapipe as mp
 import numpy as np
+from PIL import Image
+import io
 
 # --- Configuration & Initialization ---
 st.set_page_config(page_title="Offline Biometric Verification", layout="centered")
@@ -34,15 +35,17 @@ def calculate_ear(landmarks, eye_indices):
     ear = (p2_p6 + p3_p5) / (2.0 * p1_p4)
     return ear
 
-def mock_extract_embedding(face_img):
+def mock_extract_embedding(pil_img):
     """
     Simulates generating a 128-D vector embedding (e.g., MobileFaceNet behavior).
-    In your real React Native application, this would be computed by your INT8 ONNX model.
+    Uses Pillow and NumPy instead of OpenCV.
     """
-    resized = cv2.resize(face_img, (112, 112))
-    gray = cv2.cvtColor(resized, cv2.COLOR_BGR2GRAY)
-    # Using normalized histogram means as a deterministic dummy descriptor for this sandbox
-    np.random.seed(int(np.mean(gray)))
+    # Resize and convert to grayscale using PIL
+    resized_gray = pil_img.resize((112, 112)).convert("L")
+    gray_array = np.array(resized_gray)
+    
+    # Using normalized mean as a deterministic dummy descriptor for this sandbox
+    np.random.seed(int(np.mean(gray_array)))
     embedding = np.random.rand(128)
     return embedding / np.linalg.norm(embedding)
 
@@ -59,16 +62,16 @@ st.sidebar.header("👤 1. Enrolment (Database)")
 uploaded_file = st.sidebar.file_uploader("Upload Master Identity Photo", type=["jpg", "png", "jpeg"])
 
 if uploaded_file:
-    file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
-    img = cv2.imdecode(file_bytes, 1)
-    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    # Open image using PIL
+    img_pil = Image.open(uploaded_file).convert("RGB")
+    img_rgb = np.array(img_pil)
     
     # Process reference image to generate embedding
     results = face_mesh.process(img_rgb)
     if results.multi_face_landmarks:
-        st.sidebar.image(img_rgb, caption="Enrolled Profile", use_container_width=True)
+        st.sidebar.image(img_pil, caption="Enrolled Profile", use_container_width=True)
         if st.sidebar.button("Generate Master Embedding"):
-            st.session_state.registered_embedding = mock_extract_embedding(img)
+            st.session_state.registered_embedding = mock_extract_embedding(img_pil)
             st.sidebar.success("✅ Secure 128-D Vector Saved Locally!")
     else:
         st.sidebar.error("No face detected in reference photo. Use a clear, well-lit portrait.")
@@ -83,11 +86,10 @@ else:
     img_file_buffer = st.camera_input("Position face clearly within the camera frame")
     
     if img_file_buffer is not None:
-        # Convert frame to OpenCV matrix format
-        bytes_data = img_file_buffer.getvalue()
-        cv2_img = cv2.imdecode(np.frombuffer(bytes_data, np.uint8), cv2.IMREAD_COLOR)
-        h, w, _ = cv2_img.shape
-        img_rgb = cv2.cvtColor(cv2_img, cv2.COLOR_BGR2RGB)
+        # Convert frame buffer directly to a PIL Image
+        live_img_pil = Image.open(img_file_buffer).convert("RGB")
+        img_rgb = np.array(live_img_pil)
+        h, w, _ = img_rgb.shape
         
         # 1. Landmark & Mesh Processing
         results = face_mesh.process(img_rgb)
@@ -118,7 +120,7 @@ else:
                     st.session_state.eye_closed = False
             
             # 3. Pipeline Stage B: Verify Identity via Vector Similarity Matching
-            live_embedding = mock_extract_embedding(cv2_img)
+            live_embedding = mock_extract_embedding(live_img_pil)
             # Compute cosine similarity
             similarity_score = np.dot(st.session_state.registered_embedding, live_embedding)
             
@@ -129,7 +131,7 @@ else:
             with col2:
                 st.metric(label="Registered Blinks", value=st.session_state.blink_count)
             with col3:
-                st.metric(label="Vector Match Match Match Score", value=f"{similarity_score*100:.1f}%")
+                st.metric(label="Vector Match Score", value=f"{similarity_score*100:.1f}%")
             
             # --- Verification Decision Rules ---
             SIMILARITY_THRESHOLD = 0.85
@@ -144,6 +146,7 @@ else:
                 if st.button("Simulate AWS Sync & Local Cache Purge"):
                     st.toast("Syncing telemetry logs securely with AWS Datalake 3.0 backend...")
                     st.session_state.blink_count = 0
+                    st.session_state.eye_closed = False
                     st.success("💥 Transaction complete. Local volatile cache cleared down.")
             else:
                 st.warning("🚨 **PENDING VERIFICATION:** Verification conditions incomplete.")

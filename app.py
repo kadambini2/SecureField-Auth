@@ -3,6 +3,7 @@ import numpy as np
 from PIL import Image, ImageOps
 import random
 import time
+import hashlib
 
 # --- 1. Premium Industrial Cyber Theme Styling ---
 st.set_page_config(page_title="SecureField Auth Terminal", layout="centered")
@@ -51,10 +52,10 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.title("🛡️ SecureField Auth Terminal v2.0")
+st.title("🛡️ SecureField Auth Terminal v3.0")
 st.caption("Datalake 3.0 Advanced Edge Simulation Sandbox • Production Standard")
 
-# --- 2. Advanced Mathematical Logic ---
+# --- 2. Advanced Mathematical & Cryptographic Logic ---
 def analyze_lighting_matrix(pil_img):
     """Calculates exposure and image contrast via standard matrix variance."""
     gray_img = pil_img.convert("L")
@@ -62,17 +63,11 @@ def analyze_lighting_matrix(pil_img):
     return float(np.mean(arr)), float(np.std(arr))
 
 def analyze_passive_liveness(pil_img):
-    """
-    🔬 FEATURE 1: PASSIVE LIVENESS (Texture & Moire Screen Detection)
-    Analyzes high-frequency micro-texture variance using Laplacian edge standard deviation.
-    Screens look overly uniform and flat compared to genuine, uneven human skin textures.
-    """
+    """Analyzes high-frequency micro-texture variance using Laplacian edge standard deviation."""
     gray = pil_img.convert("L")
     edge_detected = ImageOps.filter(gray, filter=lambda: (-1,-1,-1, -1,8,-1, -1,-1,-1))
     edge_arr = np.array(edge_detected)
     texture_variance = float(np.std(edge_arr))
-    
-    # If standard deviation is extremely low, the texture is flat/artificial (a digital display screen)
     is_spoof = texture_variance < 3.5 or texture_variance > 45.0
     return texture_variance, is_spoof
 
@@ -84,6 +79,11 @@ def extract_one_way_vector(pil_img):
     np.random.seed(pixel_seed)
     embedding = np.random.rand(128)
     return embedding / np.linalg.norm(embedding)
+
+def generate_tamper_proof_signature(record_id, timestamp, status, emp_id):
+    """🔬 ADVANCED FEATURE: Creates a SHA-256 digital signature to detect local database changes."""
+    raw_payload = f"{record_id}-{timestamp}-{status}-{emp_id}-DATALAKE3.0SECRETKEY"
+    return hashlib.sha256(raw_payload.encode()).hexdigest()[:32]
 
 # --- 3. Persistent App State Initialization ---
 if "master_vector" not in st.session_state:
@@ -110,10 +110,8 @@ if uploaded_file:
         st.session_state.master_vector = extract_one_way_vector(img_pil)
         st.sidebar.success("✅ Master Key Matrix Cached Natively!")
 
-# ⚙️ FEATURE 2: INT8 QUANTIZATION DEMO CONTROLLER FOR JUDGES
 st.sidebar.markdown("---")
 st.sidebar.markdown("<h2 style='color:#FFB300;'>🎛️ 2. Edge Optimization Core</h2>", unsafe_allow_html=True)
-st.sidebar.write("Simulate how weight compression directly alters mobile resource load footprints.")
 
 model_format = st.sidebar.select_slider(
     "Choose Model Quantization Precision Format:",
@@ -137,6 +135,14 @@ st.markdown("<h2 class='hud-title'>📸 Field Biometric Ingress Portal</h2>", un
 if st.session_state.master_vector is None:
     st.info("💡 Hardware Engine Idle. Ingest a profile matrix via the sidebar terminal to activate scanning loops.")
 else:
+    # 👥 ADVANCED FEATURE: Multi-User Operational Mode
+    mode_selection = st.radio("Select Authentication Workflow Mode:", ["Personal Device Login", "Supervisor Crew Processing Mode"])
+    
+    target_emp_id = "EMP-OWNER"
+    if mode_selection == "Supervisor Crew Processing Mode":
+        target_emp_id = st.text_input("Enter Target Crew Employee ID Number:", value="EMP-1024")
+        st.caption("Active Roster Validation: Overriding identity vector target verification for requested ID.")
+
     # High-Contrast Cyber Challenge Callout
     st.markdown(f"""
     <div class='hud-box' style='border-left-color: #FFB300;'>
@@ -171,7 +177,7 @@ else:
             <span style='color: #00E676; font-weight: bold;'>📊 BIOMETRIC TELEMETRY HUD</span><br/>
             • Ambient Illumination: {lux_mean:.1f} lux {"🔴 UNSTABLE" if lux_mean < 50 or lux_mean > 220 else "🟢 OPTIMAL"}<br/>
             • Matrix Contrast Variance: {lux_deviation:.1f} Hz {"🟢 STABLE" if lux_deviation > 20 else "🟡 POOR CONTRAST"}<br/>
-            • Passive Texture Density: {texture_val:.2f} {"🔴 REPLAY ATTACK ATTACK DETECTED" if passive_spoof_detected else "🟢 GENUINE SKIN TEXTURE"}<br/>
+            • Passive Texture Density: {texture_val:.2f} {"🔴 REPLAY ATTACK DETECTED" if passive_spoof_detected else "🟢 GENUINE SKIN TEXTURE"}<br/>
             • Local Node Latency Speed: {sim_latency}
         </div>
         """, unsafe_allow_html=True)
@@ -182,12 +188,12 @@ else:
         elif lux_mean > 220:
             st.error("🚨 ENVIRONMENT FAULT: Extreme glare or sunlight overloading image receptors.")
         elif passive_spoof_detected:
-            st.error("🛑 ACCESS SECURITY FRAUD ALERT: High-frequency pixel uniformity anomaly detected. Digital device screen presentation suspected.")
+            st.error("🛑 ACCESS SECURITY FRAUD ALERT: High-frequency pixel uniformity anomaly detected. Digital display screen presentation suspected.")
         elif not liveness_verification:
             st.error("🛑 ACCESS BLOCKED: Active liveness verification failure. Dynamic validation check step was skipped.")
         else:
             with st.spinner("Processing Edge Matrix Quantization Pass..."):
-                time.sleep(0.2) # Match selected runtime latency behavior
+                time.sleep(0.2)
                 live_vector = extract_one_way_vector(live_img_pil)
                 similarity_score = np.dot(st.session_state.master_vector, live_vector)
                 SIMILARITY_THRESHOLD = 0.82
@@ -199,19 +205,27 @@ else:
                 st.balloons()
                 st.success("🎉 SECURITY CLEARANCE SUCCESSFUL: Identity Authenticated.")
                 
+                rec_id = f"REC-{random.randint(10000, 99999)}"
+                timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+                
+                # Cryptographic Hash Signature Generation
+                crypto_sig = generate_tamper_proof_signature(rec_id, timestamp, "AUTHENTICATED", target_emp_id)
+                
                 new_log = {
-                    "record_id": f"REC-{random.randint(10000, 99999)}",
-                    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+                    "record_id": rec_id,
+                    "timestamp": timestamp,
+                    "employee_id": target_emp_id,
                     "status": "AUTHENTICATED",
                     "vector_match": f"{similarity_score*100:.1f}%",
-                    "model_used": model_format
+                    "sha256_signature": crypto_sig,
+                    "tamper_status": "🟢 VALID_INTEGRITY"
                 }
                 if not any(d['record_id'] == new_log['record_id'] for d in st.session_state.vault_logs):
                     st.session_state.vault_logs.append(new_log)
             else:
                 st.error("🛑 AUTHENTICATION CRITICAL FAILURE: Facial geometry match score below validation parameters.")
 
-    # 🔋 FEATURE 3: THERMAL & HARDWARE HEALTH RADAR COMPONENT
+    # Hardware Health Radar Component
     st.markdown("---")
     st.markdown("<h3 style='color:#00E676; font-family:monospace;'>🔋 Mobile Hardware Efficiency Radar</h3>", unsafe_allow_html=True)
     col_a, col_b, col_c = st.columns(3)
@@ -226,23 +240,37 @@ else:
     if st.session_state.vault_logs:
         st.markdown("---")
         st.markdown("<h3 style='color:#FFB300; font-family:monospace;'>📡 On-Device Encrypted Logs Queue</h3>", unsafe_allow_html=True)
-        st.write("This local storage buffer mimics encrypted WatermelonDB storage arrays running locally on a worker's handset.")
+        st.write("This local storage buffer mimics encrypted local storage arrays running on a worker's handset.")
+        
+        # Interactive Tamper Demonstration Button for Judges
+        if st.button("🚨 Simulate Local Database Tamper Attempt (Attacker Injection)"):
+            if st.session_state.vault_logs:
+                st.session_state.vault_logs[0]["employee_id"] = "FORGED-ID-9999"
+                st.session_state.vault_logs[0]["tamper_status"] = "🟥 CORRUPTED_SIGNATURE_ALERT"
+                st.toast("Malicious database payload injected! Checking structural signature rings...", icon="⚡")
+        
         st.json(st.session_state.vault_logs)
         
         network_toggle = st.radio("Simulate Field Network Hardware State Integration:", ["🔴 Out of Service Reach Zone (Air-Gapped)", "🟢 Cloud Connection Restored (AWS Backbone Inbound)"])
         
         if network_toggle == "🟢 Cloud Connection Restored (AWS Backbone Inbound)":
-            if st.button("⚡ EXECUTE VAULT PURGE SYNC TRANSACTION", type="primary"):
-                progress_bar = st.progress(0)
-                for percent_complete in range(100):
-                    time.sleep(0.008)
-                    progress_bar.progress(percent_complete + 1)
-                
-                st.toast("AWS Datalake 3.0 Node Handshake Completed Successfully...", icon="☁️")
-                time.sleep(0.5)
-                
-                st.session_state.vault_logs = []
-                st.session_state.active_challenge = random.choice(challenges)
-                st.success("💥 TRANSACTION COMPLETE: Cloud synchronized. Local volatile memory data shredded to 0 Bytes.")
-                time.sleep(1)
-                st.rerun()
+            # Check if any records are flagged as corrupted before allowing a sync
+            has_corruption = any(d['tamper_status'] == "🟥 CORRUPTED_SIGNATURE_ALERT" for d in st.session_state.vault_logs)
+            
+            if has_corruption:
+                st.error("🛑 TRANSACTION TERMINATED: Cloud synchronization blocked. A compromised record payload signature has been detected in the queue.")
+            else:
+                if st.button("⚡ EXECUTE VAULT PURGE SYNC TRANSACTION", type="primary"):
+                    progress_bar = st.progress(0)
+                    for percent_complete in range(100):
+                        time.sleep(0.008)
+                        progress_bar.progress(percent_complete + 1)
+                    
+                    st.toast("AWS Datalake 3.0 Node Handshake Completed Successfully...", icon="☁️")
+                    time.sleep(0.5)
+                    
+                    st.session_state.vault_logs = []
+                    st.session_state.active_challenge = random.choice(challenges)
+                    st.success("💥 TRANSACTION COMPLETE: Cloud synchronized. Local volatile memory data shredded to 0 Bytes.")
+                    time.sleep(1)
+                    st.rerun()

@@ -88,6 +88,16 @@ def analyze_lighting_matrix(pil_img):
     arr = np.array(gray_img)
     return float(np.mean(arr)), float(np.std(arr))
 
+def analyze_passive_liveness(pil_img):
+    """Analyzes micro-texture variance using a high-speed NumPy pixel gradient calculation."""
+    gray = pil_img.convert("L")
+    arr = np.array(gray, dtype=np.float32)
+    dy, dx = np.gradient(arr)
+    gradient_magnitude = np.sqrt(dx**2 + dy**2)
+    texture_variance = float(np.std(gradient_magnitude))
+    is_spoof = texture_variance < 5.0 or texture_variance > 55.0
+    return texture_variance, is_spoof
+
 def extract_one_way_vector(pil_img):
     resized = pil_img.resize((112, 112)).convert("L")
     img_array = np.array(resized)
@@ -147,6 +157,7 @@ if current_screen == "📸 1. Authentication Gate":
         if img_file_buffer is not None:
             live_img_pil = Image.open(img_file_buffer).convert("RGB")
             lux_mean, lux_deviation = analyze_lighting_matrix(live_img_pil)
+            texture_val, passive_spoof_detected = analyze_passive_liveness(live_img_pil)
             
             # Simulated Latency depending on format settings
             sim_latency = "120 ms" if "INT8" in st.session_state.model_format else ("410 ms" if "Float16" in st.session_state.model_format else "840 ms")
@@ -155,12 +166,15 @@ if current_screen == "📸 1. Authentication Gate":
             <div class='hud-box' style='border-left-color: #00E676;'>
                 <span style='color: #00E676; font-weight: bold;'>📊 LIVE TELEMETRY</span><br/>
                 • Illumination Exposure: {lux_mean:.1f} lux<br/>
+                • Texture Density Check: {texture_val:.2f} {"🔴 SPOOF SUSPECTED" if passive_spoof_detected else "🟢 PHYSICAL FACE SKIN"}<br/>
                 • Execution Compression Delay: {sim_latency}<br/>
                 • Core Processing: Active Local Air-Gapped Thread
             </div>
             """, unsafe_allow_html=True)
             
-            if not liveness_verification:
+            if passive_spoof_detected:
+                st.error("🛑 ACCESS SECURITY FRAUD ALERT: High-frequency digital screen presentation suspected.")
+            elif not liveness_verification:
                 st.error("🛑 ACCESS BLOCKED: Liveness validation check step was skipped.")
             else:
                 live_vector = extract_one_way_vector(live_img_pil)
@@ -192,7 +206,7 @@ if current_screen == "📸 1. Authentication Gate":
                     st.error("🛑 AUTHENTICATION CRITICAL FAILURE: Facial metrics do not match master credentials.")
 
 
-# --- SCREEN 2: NEW! ANALYTICS INSIGHT VAULT DASHBOARD ---
+# --- SCREEN 2: ANALYTICS INSIGHT VAULT DASHBOARD ---
 elif current_screen == "📊 2. Analytics Insight Vault":
     st.markdown("<h2 class='hud-title'>📊 Business Intelligence & Attendance Insight Vault</h2>", unsafe_allow_html=True)
     st.write("Real-time local cluster analytics for corporate tracking diagnostics.")
@@ -207,9 +221,67 @@ elif current_screen == "📊 2. Analytics Insight Vault":
     with c2:
         st.markdown(f"<div class='metric-card'><span style='color:#FFB300;font-size:14px;font-family:monospace;'>NETWORK ARCHIVE MODE</span><br/><b style='font-size:32px;'>100% OFFLINE</b></div>", unsafe_allow_html=True)
     with c3:
-        st.markdown(f"<div class='metric-card'><span style='color:#FF1744;font-size:14px;font-family:monospace;'>INTEGRITY TEMPER BREACHES</span><br/><b style='font-size:32px;'>{tamper_alerts}</b></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='metric-card'><span style='color:#FF1744;font-size:14px;font-family:monospace;'>INTEGRITY TAMPER BREACHES</span><br/><b style='font-size:32px;'>{tamper_alerts}</b></div>", unsafe_allow_html=True)
         
     st.markdown("### On-Device Cache Storage Array Logs")
     
     if st.button("🚨 Simulate Attacker Database Injection (Tamper Test Log #1)"):
-        if len(st.session_state.vault_logs) >
+        if len(st.session_state.vault_logs) > 0:
+            st.session_state.vault_logs[0]["employee_id"] = "COMPROMISED-ID-99"
+            st.session_state.vault_logs[0]["tamper_status"] = "🟥 CORRUPTED_SIGNATURE_ALERT"
+            st.toast("Malicious structural rewrite caught!", icon="⚡")
+            st.rerun()
+            
+    st.json(st.session_state.vault_logs)
+    
+    st.markdown("---")
+    st.markdown("### 📡 AWS Datalake 3.0 Relaying Pipeline Core")
+    network_toggle = st.radio("Field Network State Integration Link:", ["🔴 Out of Service Reach Zone (Air-Gapped)", "🟢 Cloud Connection Restored (AWS Inbound Available)"])
+    
+    if network_toggle == "🟢 Cloud Connection Restored (AWS Inbound Available)":
+        has_corruption = any(d['tamper_status'] != "🟢 VALID_INTEGRITY" for d in st.session_state.vault_logs)
+        if has_corruption:
+            st.error("🛑 SYNC CRITICAL STOP: A compromised payload record signature hash breaks security parameters. Synchronization terminated.")
+        else:
+            if st.button("⚡ EXECUTE ATOMIC SYNC RUN & VOLATILE CACHE PURGE", type="primary"):
+                pb = st.progress(0)
+                for p in range(100):
+                    time.sleep(0.005)
+                    pb.progress(p + 1)
+                st.session_state.vault_logs = []
+                st.success("💥 TRANSACTION AGGREGATED: AWS Backbone update success. Local disk logs wiped clean down to 0 Bytes.")
+                st.rerun()
+
+
+# --- SCREEN 3: SECURITY CONFIGURATION MATRIX ---
+elif current_screen == "🛡️ 3. Security Config Matrix":
+    st.markdown("<h2 class='hud-title'>🛡️ System Operational Configuration Matrix</h2>", unsafe_allow_html=True)
+    st.write("Tune edge algorithms and monitor mobile system telemetry properties.")
+    
+    st.markdown("### 🎛️ Algorithmic Calibration Parameters")
+    
+    # Feature adjustment options
+    st.session_state.similarity_threshold = st.slider(
+        "Biometric Vector Cosine Match Match Threshold Strictness:",
+        min_value=0.50, max_value=0.98, value=st.session_state.similarity_threshold, step=0.01
+    )
+    st.caption("Lower numbers accommodate dirt/sweat field distortions; higher numbers tighten defense constraints against high-res masks.")
+    
+    st.session_state.model_format = st.selectbox(
+        "Edge Neural Engine Framework Compilation Weight Format Profile:",
+        ["Standard Float32 (84.2 MB Footprint)", "Optimized Float16 (42.1 MB Footprint)", "Quantized INT8 (Our Build) (4.6 MB Footprint)"],
+        index=2
+    )
+    
+    st.markdown("---")
+    st.markdown("### 🔋 Live Mobile Handset Resource Telemetry Monitor")
+    
+    col_x, col_y, col_z = st.columns(3)
+    with col_x:
+        st.metric("Phone System Core Thermal Index", "35.8 °C", "🟢 Stable Target")
+    with col_y:
+        st.metric("Active Model RAM Footprint Allocation", "4.2 MB" if "INT8" in st.session_state.model_format else "78.4 MB", "Safe State")
+    with col_z:
+        st.metric("Active Power Draw Efficiency Rating", "1.18%/hr", "Optimal Optimization")
+        
+    st.info("ℹ️ System Configuration state updates execute instantly without needing internet cloud connection updates.")
